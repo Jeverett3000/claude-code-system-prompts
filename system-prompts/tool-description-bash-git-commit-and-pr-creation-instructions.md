@@ -1,15 +1,25 @@
 <!--
 name: 'Tool Description: Bash (Git commit and PR creation instructions)'
 description: Instructions for creating git commits and GitHub pull requests
-ccVersion: 2.1.84
+ccVersion: 2.1.178
 variables:
-  - BASH_TOOL_NAME
+  - LOADED_COMMANDS_CONTEXT
   - COMMIT_CO_AUTHORED_BY_CLAUDE_CODE
-  - TODO_TOOL_OBJECT
+  - BASH_TOOL_NAME
+  - GET_TODO_TOOL_FN
   - TASK_TOOL_NAME
+  - PR_INSTRUCTIONS_PREFIX
+  - EMPTY_STRING
   - PR_GENERATED_WITH_CLAUDE_CODE
+  - PR_COMMON_OPERATIONS_NOTE
 -->
-# Committing changes with git
+${LOADED_COMMANDS_CONTEXT.commit?`# Git
+- Never use git commands with the -i flag (like git rebase -i or git add -i) since they require interactive input which is not supported.
+- Only commit when the user explicitly asks. When staging, prefer naming specific files over "git add -A"/"git add ." — never commit files that likely contain secrets (.env, credentials).${COMMIT_CO_AUTHORED_BY_CLAUDE_CODE?`
+- End git commit messages with:
+${COMMIT_CO_AUTHORED_BY_CLAUDE_CODE}`:""}
+
+`:`# Committing changes with git
 
 Only create commits when requested by the user. If unclear, ask first. When the user asks you to create a new git commit, follow these steps carefully:
 
@@ -43,7 +53,7 @@ Git Safety Protocol:
 
 Important notes:
 - NEVER run additional commands to read or explore code, besides git bash commands
-- NEVER use the ${TODO_TOOL_OBJECT.name} or ${TASK_TOOL_NAME} tools
+- NEVER use the ${GET_TODO_TOOL_FN} or ${TASK_TOOL_NAME} tools
 - DO NOT push to the remote repository unless the user explicitly asks you to do so
 - IMPORTANT: Never use git commands with the -i flag (like git rebase -i or git add -i) since they require interactive input which is not supported.
 - IMPORTANT: Do not use --no-edit with git rebase commands, as the --no-edit flag is not a valid option for git rebase.
@@ -58,7 +68,9 @@ git commit -m "$(cat <<'EOF'
    )"
 </example>
 
-# Creating pull requests
+`}${PR_INSTRUCTIONS_PREFIX}${EMPTY_STRING?`${EMPTY_STRING}
+
+`:""}# Creating pull requests
 Use the gh command via the Bash tool for ALL GitHub-related tasks including working with issues, pull requests, checks, and releases. If given a Github URL use the gh command to get the information needed.
 
 IMPORTANT: When the user asks you to create a pull request, follow these steps carefully:
@@ -89,8 +101,10 @@ EOF
 </example>
 
 Important:
-- DO NOT use the ${TODO_TOOL_OBJECT.name} or ${TASK_TOOL_NAME} tools
+- DO NOT use the ${GET_TODO_TOOL_FN} or ${TASK_TOOL_NAME} tools
 - Return the PR URL when you're done, so the user can see it
 
 # Other common operations
-- View comments on a Github PR: gh api repos/foo/bar/pulls/123/comments
+- View comments on a Github PR: gh api repos/foo/bar/pulls/123/comments${PR_COMMON_OPERATIONS_NOTE?`
+
+${PR_COMMON_OPERATIONS_NOTE}`:""}

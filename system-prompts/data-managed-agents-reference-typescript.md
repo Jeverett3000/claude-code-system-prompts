@@ -1,7 +1,7 @@
 <!--
 name: 'Data: Managed Agents reference — TypeScript'
 description: Reference guide for using the Anthropic TypeScript SDK to create and manage agents, sessions, environments, streaming, custom tools, file uploads, and MCP server integration
-ccVersion: 2.1.105
+ccVersion: 2.1.154
 -->
 # Managed Agents — TypeScript
 
@@ -20,10 +20,12 @@ npm install @anthropic-ai/sdk
 ```typescript
 import Anthropic from "@anthropic-ai/sdk";
 
-// Default (uses ANTHROPIC_API_KEY env var)
+// Default — resolves credentials from the environment:
+// ANTHROPIC_API_KEY, or ANTHROPIC_AUTH_TOKEN, or an `ant auth login` profile.
+// Prefer this for local dev; don't hardcode a key.
 const client = new Anthropic();
 
-// Explicit API key
+// Explicit API key (only when you must inject a specific key)
 const client = new Anthropic({ apiKey: "your-api-key" });
 ```
 
@@ -151,7 +153,7 @@ const [events] = await Promise.all([
 ]);
 
 // Standalone stream iteration:
-const stream = await client.beta.sessions.stream(
+const stream = await client.beta.sessions.events.stream(
   session.id,
 );
 
@@ -167,7 +169,7 @@ for await (const event of stream) {
     case "agent.custom_tool_use":
       // Custom tool invocation — session is now idle
       console.log(`\
-Custom tool call: ${event.tool_name}`);
+Custom tool call: ${event.name}`);
       console.log(`Input: ${JSON.stringify(event.input)}`);
       break;
     case "session.status_idle":
@@ -229,11 +231,11 @@ function runCustomTool(toolName: string, toolInput: unknown): string {
 
 async function runSession(client: Anthropic, sessionId: string) {
   while (true) {
-    const stream = await client.beta.sessions.stream(
+    const stream = await client.beta.sessions.events.stream(
       sessionId,
     );
 
-    const toolCalls: Array<{ custom_tool_use_id: string; tool_name: string; input: unknown }> = [];
+    const toolCalls: Anthropic.Beta.Sessions.BetaManagedAgentsAgentCustomToolUseEvent[] = [];
 
     for await (const event of stream) {
       if (event.type === "agent.message") {
@@ -243,11 +245,7 @@ async function runSession(client: Anthropic, sessionId: string) {
           }
         }
       } else if (event.type === "agent.custom_tool_use") {
-        toolCalls.push({
-          id: event.id,
-          tool_name: event.tool_name,
-          input: event.input,
-        });
+        toolCalls.push(event);
       } else if (event.type === "session.status_idle") {
         break;
       } else if (event.type === "session.status_terminated") {
@@ -261,7 +259,7 @@ async function runSession(client: Anthropic, sessionId: string) {
     const results = toolCalls.map((call) => ({
       type: "user.custom_tool_result" as const,
       custom_tool_use_id: call.id,
-      content: [{ type: "text" as const, text: runCustomTool(call.tool_name, call.input) }],
+      content: [{ type: "text" as const, text: runCustomTool(call.name, call.input) }],
     }));
 
     await client.beta.sessions.events.send(
